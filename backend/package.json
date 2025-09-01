@@ -1,0 +1,30 @@
+{
+  "name": "ch1",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "start": "node src/index.js",
+    "dev": "nodemon src/index.js",
+    "test": "NODE_OPTIONS=--experimental-vm-modules jest",
+    "lint": "eslint src"
+  },
+  "dependencies": {
+    "body-parser": "^2.2.0",
+    "cors": "^2.8.5",
+    "dotenv": "^17.2.1",
+    "express": "^5.1.0",
+    "mongodb": "^6.19.0",
+    "mongoose": "^8.18.0"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.33.0",
+    "eslint": "^9.34.0",
+    "eslint-config-prettier": "^10.1.8",
+    "globals": "^16.3.0",
+    "jest": "^30.1.1",
+    "mongodb-memory-server": "^10.2.0",
+    "nodemon": "^3.1.10",
+    "prettier": "^3.6.2"
+  }
+}
