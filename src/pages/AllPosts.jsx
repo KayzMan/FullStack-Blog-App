@@ -1,4 +1,4 @@
-import { Box, Heading, Link, Flex, Button, Stack } from '@chakra-ui/react'
+import { Box, Heading, Link, Flex, Button } from '@chakra-ui/react'
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Link as RouterLink } from 'react-router-dom'
@@ -9,6 +9,8 @@ import { PostFilter } from '../components/PostFilter'
 import { PostSorting } from '../components/PostSorting'
 import { CustomAccordion } from '../components/CustomAccordion'
 import { AllPostsSkeleton } from '../skeletons/AllPostsSkeleton'
+
+import { routesPaths } from '../constants/routesPaths'
 
 // api...
 import { getPosts } from '../api/posts'
@@ -37,7 +39,7 @@ export function AllPosts() {
         </Heading>
 
         {/* create new button */}
-        <Link as={RouterLink} to={'/create'}>
+        <Link as={RouterLink} to={routesPaths.createPost}>
           <Button bg={'olive'}>Create New</Button>
         </Link>
       </Flex>

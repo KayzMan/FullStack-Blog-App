@@ -1,7 +1,6 @@
 import PropTypes from 'prop-types'
 import {
   Card,
-  Stack,
   Text,
   IconButton,
   Image,
@@ -16,24 +15,42 @@ import { useState, Fragment } from 'react'
 import { toaster, Toaster } from '../components/ui/toaster'
 import { useQueryClient, useMutation } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
+import slug from 'slug'
 
 import { TagsView } from './TagsView'
+import { User } from './User'
 
 import { deletePost } from '../api/posts'
+import { useAuth } from '../contexts/AuthContext'
 
 export function Post({ title, author, _id: postId, tags }) {
   const [showDelete, setShowDelete] = useState(false)
   const navigate = useNavigate()
+  const [token] = useAuth()
 
   const queryClient = useQueryClient()
   const deletePostMutation = useMutation({
-    mutationFn: () => deletePost(postId),
-    onSuccess: () => {
-      toaster.create({
-        title: 'Post deleted successfully!',
-        type: 'success',
-        duration: 5000,
-      })
+    mutationFn: () => deletePost(token, postId),
+    onSuccess: (status) => {
+      console.log('data:', status)
+
+      if (status === 204) {
+        toaster.create({
+          title: 'Post deleted successfully!',
+          type: 'success',
+          duration: 5000,
+        })
+
+        setShowDelete(false)
+
+        queryClient.invalidateQueries(['posts'])
+      } else {
+        toaster.create({
+          title: 'Failed to delete post!',
+          type: 'error',
+          duration: 5000,
+        })
+      }
 
       setShowDelete(false)
 
@@ -59,16 +76,8 @@ export function Post({ title, author, _id: postId, tags }) {
         <Card.Body gap={'2'}>
           <Card.Title mt={'2'}>{title}</Card.Title>
           <Card.Description>
-            <Stack>
-              {author && (
-                <Text>
-                  Written by{' '}
-                  <Text as={'span'} fontWeight={'semibold'}>
-                    {author}
-                  </Text>
-                </Text>
-              )}
-            </Stack>
+            Written by {''}
+            {author && <User id={author} />}
           </Card.Description>
         </Card.Body>
         <Card.Footer justifyContent={'flex-end'}>
@@ -79,7 +88,7 @@ export function Post({ title, author, _id: postId, tags }) {
             size={'xs'}
             _hover={{ color: 'white', bg: 'black' }}
             onClick={() => {
-              navigate(`/${postId}`)
+              navigate(`/posts/${postId}/${slug(title)}`)
             }}
           >
             <LuEye />

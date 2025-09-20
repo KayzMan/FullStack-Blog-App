@@ -17,19 +17,20 @@ import { LuCheck, LuPencilLine, LuX } from 'react-icons/lu'
 import { TagsView } from './TagsView'
 
 import { createPost } from '../api/posts'
+import { useAuth } from '../contexts/AuthContext'
 
 export function CreatePost() {
   const [title, setTitle] = useState('')
-  const [author, setAuthor] = useState('')
   const [contents, setContents] = useState('')
   const [newTag, setNewTag] = useState('')
   const [tags, setTags] = useState([])
 
   const navigate = useNavigate()
+  const [token] = useAuth()
 
   const queryClient = useQueryClient()
   const createPostMutation = useMutation({
-    mutationFn: () => createPost({ title, author, contents, tags }),
+    mutationFn: () => createPost(token, { title, contents, tags }),
     onSuccess: () => {
       toaster.create({
         title: 'Post created successfully!',
@@ -39,7 +40,6 @@ export function CreatePost() {
       queryClient.invalidateQueries(['posts'])
 
       setTitle('')
-      setAuthor('')
       setContents('')
 
       setTimeout(() => {
@@ -61,6 +61,10 @@ export function CreatePost() {
     createPostMutation.mutate()
   }
 
+  if (!token) {
+    return <Box>Please log in to create new posts.</Box>
+  }
+
   return (
     <Box>
       <form onSubmit={handleSubmit}>
@@ -74,18 +78,6 @@ export function CreatePost() {
               id="'create-title"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-            />
-          </Field.Root>
-
-          {/* author */}
-          <Field.Root>
-            <Field.Label>Author</Field.Label>
-            <Input
-              type='text'
-              name='create-author'
-              id='create-author'
-              value={author}
-              onChange={(e) => setAuthor(e.target.value)}
             />
           </Field.Root>
 
@@ -116,13 +108,15 @@ export function CreatePost() {
                 </IconButton>
               </Editable.EditTrigger>
               <Editable.CancelTrigger asChild>
-                <IconButton variant='outline' size='xs'>
+                <IconButton variant='subtle' color={'red'} size='xs'>
                   <LuX />
                 </IconButton>
               </Editable.CancelTrigger>
               <Editable.SubmitTrigger asChild>
                 <IconButton
-                  variant='outline'
+                  variant='solid'
+                  color={'white'}
+                  bg={'green'}
                   size='xs'
                   onClick={() => {
                     if (newTag) {

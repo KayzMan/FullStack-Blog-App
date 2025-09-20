@@ -9,45 +9,66 @@ import {
   Portal,
   CloseButton,
   Separator,
-  Stack,
 } from '@chakra-ui/react'
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { LuTrash2 } from 'react-icons/lu'
 import { FiEdit } from 'react-icons/fi'
 import { toaster, Toaster } from '../components/ui/toaster'
+import slug from 'slug'
 
 import { ViewPostSkeleton } from '../skeletons/ViewPostSkeleton'
 import { BackButton } from '../components/BackButton'
 import { TagsView } from '../components/TagsView'
+import { User } from '../components/User'
+
+import { useAuth } from '../contexts/AuthContext'
 
 // api...
 import { getSinglePost, deletePost } from '../api/posts'
+import { getUserInfo } from '../api/users'
 
 export function ViewPostPage() {
-  const [post, setPost] = useState()
   const { postId } = useParams()
   const [showDelete, setShowDelete] = useState(false)
+
   const navigate = useNavigate()
+  const [token] = useAuth()
 
   const fetchPostQuery = useQuery({
-    queryKey: [`singlePost:${postId}`],
+    queryKey: ['singlePost'],
     queryFn: () => getSinglePost(postId),
   })
 
+  const userInfoQuery = useQuery({
+    queryKey: ['users', post?.author],
+    queryFn: () => getUserInfo(post?.author),
+    enabled: Boolean(post?.author),
+  })
+  const userInfo = userInfoQuery.data ?? {}
+
   const deletePostMutation = useMutation({
-    mutationFn: () => deletePost(postId),
-    onSuccess: () => {
-      toaster.create({
-        title: 'Post deleted successfully!',
-        type: 'success',
-        duration: 5000,
-      })
+    mutationFn: () => deletePost(token, postId),
+    onSuccess: (status) => {
+      if (status === 204) {
+        toaster.create({
+          title: 'Post deleted successfully!',
+          type: 'success',
+          duration: 5000,
+        })
+
+        setShowDelete(false)
+        navigate('/')
+      } else {
+        toaster.create({
+          title: 'Failed to delete post!',
+          type: 'error',
+          duration: 5000,
+        })
+      }
 
       setShowDelete(false)
-
-      navigate('/')
     },
     onError: () => {
       toaster.create({
@@ -58,17 +79,36 @@ export function ViewPostPage() {
     },
   })
 
-  useEffect(() => {
-    const data = fetchPostQuery.data
-    setPost(data)
-  }, [fetchPostQuery])
+  const post = fetchPostQuery.data
+
+  function truncate(str, max = 160) {
+    if (!str) return str
+    if (str.length > max) {
+      return str.slice(0, max - 3) + '...'
+    } else {
+      return str
+    }
+  }
 
   if (!post) {
     return <ViewPostSkeleton />
   }
 
   return (
-    <Box maxW={'xl'} mx={'auto'}>
+    <Box maxW={'xl'} mx={'auto'} mb={'10'}>
+      <title>{`${post.title} | Full-Stack React Blog`}</title>
+      <meta name='description' content={truncate(post.contents)} />
+
+      {/* Open Graph (og) meta tags... */}
+      <meta property='og:type' content='article' />
+      <meta property='og:title' content={post.title} />
+      <meta property='og:article:published_time' content={post.createdAt} />
+      <meta property='og:article:modified_time' content={post.updatedAt} />
+      <meta property='og:article:author' content={userInfo.username} />
+      {(post.tags ?? []).map((tag) => (
+        <meta key={tag} property='og:article:tag' content={tag} />
+      ))}
+
       <Box mb={'6'}>
         <BackButton title='All Posts' destination={'/'} />
       </Box>
@@ -88,19 +128,10 @@ export function ViewPostPage() {
           <Card.Body gap={'2'}>
             <Card.Title mt={'2'}>{post.title}</Card.Title>
             <Card.Description>
-              <Stack>
-                {post.author && (
-                  <Text>
-                    Written by{' '}
-                    <Text as={'span'} fontWeight={'semibold'}>
-                      {post.author}
-                    </Text>
-                  </Text>
-                )}
-
-                <TagsView tags={post.tags} />
-              </Stack>
+              Written by {''}
+              {post.author && <User id={post.author} />}
             </Card.Description>
+            <TagsView tags={post.tags} />
             <Separator />
             <Card.Description>{post.contents}</Card.Description>
           </Card.Body>
@@ -111,7 +142,7 @@ export function ViewPostPage() {
               size={'xs'}
               _hover={{ color: 'white', bg: 'black' }}
               onClick={() => {
-                navigate(`/update/${postId}`)
+                navigate(`/posts/update/${postId}/${slug(post.title)}`)
               }}
             >
               <FiEdit /> Update Post

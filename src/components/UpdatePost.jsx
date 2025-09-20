@@ -18,23 +18,25 @@ import { LuPencilLine, LuX, LuCheck } from 'react-icons/lu'
 import { TagsView } from './TagsView'
 
 import { updatePost, getSinglePost } from '../api/posts'
+import { useAuth } from '../contexts/AuthContext'
 
 export function UpdatePost() {
   const { postId } = useParams()
   const [title, setTitle] = useState()
-  const [author, setAuthor] = useState()
   const [contents, setContents] = useState()
   const [tags, setTags] = useState([])
   const [newTag, setNewTag] = useState('')
+
   const navigate = useNavigate()
+  const [token] = useAuth()
 
   const fetchPostQuery = useQuery({
-    queryKey: [`singlePost:${postId}`],
+    queryKey: ['singlePost'],
     queryFn: () => getSinglePost(postId),
   })
 
   const updatePostMutation = useMutation({
-    mutationFn: () => updatePost(postId, { title, author, contents, tags }),
+    mutationFn: () => updatePost(token, postId, { title, contents, tags }),
     onSuccess: () => {
       toaster.create({
         title: 'Post updated successfully!',
@@ -43,7 +45,7 @@ export function UpdatePost() {
       })
 
       setTimeout(() => {
-        navigate(`/${postId}`)
+        navigate(`/posts/${postId}`)
       }, 1000)
     },
     onError: (error) => {
@@ -58,10 +60,9 @@ export function UpdatePost() {
 
   useEffect(() => {
     const post = fetchPostQuery.data
-    setTitle(post.title)
-    setAuthor(post.author)
-    setContents(post.contents)
-    setTags(post.tags)
+    setTitle(post?.title)
+    setContents(post?.contents)
+    setTags(post?.tags)
   }, [])
 
   const handleSubmit = (e) => {
@@ -71,6 +72,7 @@ export function UpdatePost() {
 
   return (
     <Box>
+      <title>{`${title} | Full-Stack React Blog`}</title>
       <form onSubmit={handleSubmit}>
         <Stack gap={'4'}>
           {/* title */}
@@ -82,18 +84,6 @@ export function UpdatePost() {
               id="'create-title"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-            />
-          </Field.Root>
-
-          {/* author */}
-          <Field.Root>
-            <Field.Label>Author</Field.Label>
-            <Input
-              type='text'
-              name='create-author'
-              id='create-author'
-              value={author}
-              onChange={(e) => setAuthor(e.target.value)}
             />
           </Field.Root>
 

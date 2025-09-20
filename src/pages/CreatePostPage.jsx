@@ -6,6 +6,7 @@ import { BackButton } from '../components/BackButton'
 export function CreatePostPage() {
   return (
     <Box p={'8'} maxW={'2xl'} mx={'auto'}>
+      <title>{`Create New Post | Full-Stack React Blog`}</title>
       <Flex my={'4'}>
         <BackButton title={'All Posts'} destination={'/'} />
 

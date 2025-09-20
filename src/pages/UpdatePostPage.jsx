@@ -10,7 +10,7 @@ export function UpdatePostPage() {
   return (
     <Box p={'8'} maxW={'2xl'} mx={'auto'}>
       <Flex my={'4'}>
-        <BackButton title={'Back'} destination={`/${postId}`} />
+        <BackButton title={'Back'} destination={`/posts/${postId}`} />
 
         <Spacer />
 
