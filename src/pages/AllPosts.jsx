@@ -84,7 +84,21 @@ export function AllPosts() {
 
         {/* all posts */}
         <Box mt={'8'}>
-          {posts.length > 0 ? <PostList posts={posts} /> : <AllPostsSkeleton />}
+          {posts.length > 0 ? (
+            <PostList posts={posts} />
+          ) : (
+            <>
+              <Heading
+                textAlign={'center'}
+                mb={'10'}
+                as={'h1'}
+                fontSize={{ base: '2xl', md: '3xl' }}
+              >
+                No Posts Created Yet.
+              </Heading>
+              <AllPostsSkeleton />
+            </>
+          )}
         </Box>
       </Box>
     </Box>

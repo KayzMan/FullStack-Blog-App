@@ -1,6 +1,9 @@
 import PropTypes from 'prop-types'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 
+import { ErrorBoundary } from 'react-error-boundary'
+import { ErrorFallback } from './ErrorFallBack'
+
 import { Blog } from './Blog'
 
 const queryClient = new QueryClient()
@@ -13,7 +16,9 @@ export function App({ children }) {
         name='description'
         content='A blog full of articles about full-stack React development'
       />
-      <Blog>{children}</Blog>
+      <ErrorBoundary FallbackComponent={ErrorFallback}>
+        <Blog>{children}</Blog>
+      </ErrorBoundary>
     </QueryClientProvider>
   )
 }

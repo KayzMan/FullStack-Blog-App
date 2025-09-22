@@ -102,8 +102,6 @@ export const routes = [
             })
           }
 
-          console.log('post:-->', post)
-
           return dehydrate(queryClient)
         },
         Component() {
