@@ -9,14 +9,19 @@ import {
   IconButton,
 } from '@chakra-ui/react'
 import { Toaster, toaster } from './ui/toaster'
-import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { useMutation as useGraphQLMutation } from '@apollo/client/react'
 import { useNavigate } from 'react-router-dom'
 import { useState } from 'react'
 import { LuCheck, LuPencilLine, LuX } from 'react-icons/lu'
 
 import { TagsView } from './TagsView'
 
-import { createPost } from '../api/posts'
+import {
+  CREATE_POST,
+  GET_POSTS,
+  GET_POSTS_BY_TAG,
+  GET_POST_BY_AUTHOR,
+} from '../api/graphql/posts'
 import { useAuth } from '../contexts/AuthContext'
 
 export function CreatePost() {
@@ -28,23 +33,40 @@ export function CreatePost() {
   const navigate = useNavigate()
   const [token] = useAuth()
 
-  const queryClient = useQueryClient()
-  const createPostMutation = useMutation({
-    mutationFn: () => createPost(token, { title, contents, tags }),
-    onSuccess: () => {
-      toaster.create({
-        title: 'Post created successfully!',
-        type: 'success',
-        duration: 5000,
-      })
-      queryClient.invalidateQueries(['posts'])
+  const [createPost, { loading }] = useGraphQLMutation(CREATE_POST, {
+    variables: { title, contents, tags },
+    context: { headers: { Authorization: `Bearer ${token}` } },
+    refetchQueries: [
+      {
+        query: GET_POSTS,
+        variables: {
+          options: { sortBy: 'createdAt', sortOrder: 'descending' },
+        },
+      },
+    ],
+    awaitRefetchQueries: true,
+    onCompleted: (data) => {
+      console.log(data)
+      if (data?.createPost) {
+        toaster.create({
+          title: 'Post created successfully!',
+          type: 'success',
+          duration: 5000,
+        })
 
-      setTitle('')
-      setContents('')
+        setTitle('')
+        setContents('')
 
-      setTimeout(() => {
-        navigate('/')
-      }, 800)
+        setTimeout(() => {
+          navigate('/')
+        }, 800)
+      } else {
+        toaster.create({
+          title: `Something went wrong!!`,
+          type: 'error',
+          duration: 5000,
+        })
+      }
     },
     onError: (error) => {
       console.error(error)
@@ -58,7 +80,7 @@ export function CreatePost() {
 
   const handleSubmit = (e) => {
     e.preventDefault()
-    createPostMutation.mutate()
+    createPost()
   }
 
   if (!token) {
@@ -136,11 +158,11 @@ export function CreatePost() {
           {/* submit button */}
           <Button
             type='submit'
-            value={createPostMutation.isPending ? 'Creating...' : 'Create'}
-            disabled={!title || createPostMutation.isPending}
+            value={loading ? 'Creating...' : 'Create'}
+            disabled={!title || loading}
             bg={'olive'}
           >
-            {createPostMutation.isPending ? 'Creating...' : 'Create'}
+            {loading ? 'Creating...' : 'Create'}
           </Button>
 
           <Toaster />

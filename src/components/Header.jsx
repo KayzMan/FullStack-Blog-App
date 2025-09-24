@@ -1,19 +1,29 @@
-import { Box, Button, Flex, Text } from '@chakra-ui/react'
+import { Button, Flex } from '@chakra-ui/react'
 import { Link } from 'react-router-dom'
 import { jwtDecode } from 'jwt-decode'
+import { useQuery } from '@tanstack/react-query'
+
 import { useAuth } from '../contexts/AuthContext'
 
 import { ColorModeButton } from './ui/color-mode'
 
 import { routesPaths } from '../constants/routesPaths'
+import { getUserInfo } from '../api/users'
 
 import { User } from './User'
 
 export function Header() {
   const [token, setToken] = useAuth()
+  const { sub } = token ? jwtDecode(token) : {}
+  const userInfoQuery = useQuery({
+    queryKey: ['users', sub],
+    queryFn: () => getUserInfo(sub),
+    enabled: Boolean(sub),
+  })
 
-  if (token) {
-    const { sub } = jwtDecode(token)
+  const userInfo = userInfoQuery.data
+
+  if (token && userInfo) {
     return (
       <Flex
         alignItems={'center'}
@@ -21,7 +31,7 @@ export function Header() {
         flexDirection={{ base: 'column', md: 'row' }}
       >
         <nav>
-          <User id={sub} />
+          <User {...userInfo} />
         </nav>
 
         <ColorModeButton />

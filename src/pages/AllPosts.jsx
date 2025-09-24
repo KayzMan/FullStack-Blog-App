@@ -1,6 +1,6 @@
 import { Box, Heading, Link, Flex, Button } from '@chakra-ui/react'
 import { useState } from 'react'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery as useGraphQLQuery } from '@apollo/client/react'
 import { Link as RouterLink } from 'react-router-dom'
 
 // components...
@@ -13,7 +13,11 @@ import { AllPostsSkeleton } from '../skeletons/AllPostsSkeleton'
 import { routesPaths } from '../constants/routesPaths'
 
 // api...
-import { getPosts } from '../api/posts'
+import {
+  GET_POSTS,
+  GET_POST_BY_AUTHOR,
+  GET_POSTS_BY_TAG,
+} from '../api/graphql/posts'
 
 export function AllPosts() {
   const [filterMethod, setFilterMethod] = useState('author')
@@ -22,12 +26,13 @@ export function AllPosts() {
   const [sortBy, setSortBy] = useState('createdAt')
   const [sortOrder, setSortOrder] = useState('descending')
 
-  const postsQuery = useQuery({
-    queryKey: ['posts', { author, tag, sortBy, sortOrder }],
-    queryFn: () => getPosts({ author, tag, sortBy, sortOrder }),
-  })
-
-  const posts = postsQuery.data ?? []
+  const { data } = useGraphQLQuery(
+    author ? GET_POST_BY_AUTHOR : tag ? GET_POSTS_BY_TAG : GET_POSTS,
+    {
+      variables: { author, tag, options: { sortBy, sortOrder } },
+    },
+  )
+  const posts = data?.postsByAuthor ?? data?.postsByTag ?? data?.posts ?? []
 
   return (
     <Box p={'8'} maxW={'5xl'} mx={'auto'}>

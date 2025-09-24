@@ -7,7 +7,7 @@ export function PostList({ posts = [] }) {
   return (
     <SimpleGrid columns={[1, 1, 2, 3]} gap={'4'}>
       {posts.map((post) => (
-        <Post {...post} key={post._id} />
+        <Post {...post} key={post.id} />
       ))}
     </SimpleGrid>
   )

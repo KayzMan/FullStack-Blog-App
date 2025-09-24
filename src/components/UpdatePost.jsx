@@ -10,14 +10,23 @@ import {
   IconButton,
 } from '@chakra-ui/react'
 import { Toaster, toaster } from './ui/toaster'
-import { useMutation, useQuery } from '@tanstack/react-query'
+import {
+  useQuery as useGraphQLQuery,
+  useMutation as useGraphQLMutation,
+} from '@apollo/client/react'
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { LuPencilLine, LuX, LuCheck } from 'react-icons/lu'
 
 import { TagsView } from './TagsView'
 
-import { updatePost, getSinglePost } from '../api/posts'
+import {
+  GET_POST_BY_ID,
+  UPDATE_POST,
+  GET_POSTS,
+  GET_POSTS_BY_TAG,
+  GET_POST_BY_AUTHOR,
+} from '../api/graphql/posts'
 import { useAuth } from '../contexts/AuthContext'
 
 export function UpdatePost() {
@@ -30,23 +39,39 @@ export function UpdatePost() {
   const navigate = useNavigate()
   const [token] = useAuth()
 
-  const fetchPostQuery = useQuery({
-    queryKey: ['singlePost'],
-    queryFn: () => getSinglePost(postId),
+  const { data } = useGraphQLQuery(GET_POST_BY_ID, {
+    variables: { id: postId },
   })
 
-  const updatePostMutation = useMutation({
-    mutationFn: () => updatePost(token, postId, { title, contents, tags }),
-    onSuccess: () => {
-      toaster.create({
-        title: 'Post updated successfully!',
-        type: 'success',
-        duration: 5000,
-      })
+  useEffect(() => {
+    setTitle(data?.postById?.title)
+    setContents(data?.postById?.contents)
+    setTags(data?.postById?.tags)
+  }, [data])
 
-      setTimeout(() => {
-        navigate(`/posts/${postId}`)
-      }, 1000)
+  const [updatePost, { updateLoading }] = useGraphQLMutation(UPDATE_POST, {
+    variables: { postId, title, contents, tags },
+    context: { headers: { Authorization: `Bearer ${token}` } },
+    refetchQueries: [{ query: GET_POSTS }],
+    awaitRefetchQueries: true,
+    onCompleted: (data) => {
+      if (data?.updatePost) {
+        toaster.create({
+          title: 'Post updated successfully!',
+          type: 'success',
+          duration: 5000,
+        })
+
+        setTimeout(() => {
+          navigate(`/posts/${postId}`)
+        }, 1000)
+      } else {
+        toaster.create({
+          title: `Failed to Update Post!`,
+          type: 'error',
+          duration: 5000,
+        })
+      }
     },
     onError: (error) => {
       console.error(error)
@@ -58,16 +83,9 @@ export function UpdatePost() {
     },
   })
 
-  useEffect(() => {
-    const post = fetchPostQuery.data
-    setTitle(post?.title)
-    setContents(post?.contents)
-    setTags(post?.tags)
-  }, [])
-
   const handleSubmit = (e) => {
     e.preventDefault()
-    updatePostMutation.mutate()
+    updatePost()
   }
 
   return (
@@ -140,11 +158,11 @@ export function UpdatePost() {
           {/* submit button */}
           <Button
             type='submit'
-            value={updatePostMutation.isPending ? 'Updating...' : 'Update'}
-            disabled={!title || updatePostMutation.isPending}
+            value={updateLoading ? 'Updating...' : 'Update'}
+            disabled={!title || updateLoading}
             bg={'olive'}
           >
-            {updatePostMutation.isPending ? 'Updating...' : 'Update'}
+            {updateLoading ? 'Updating...' : 'Update'}
           </Button>
 
           <Toaster />

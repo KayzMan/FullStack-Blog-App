@@ -13,37 +13,77 @@ import {
 import { LuEye, LuTrash2 } from 'react-icons/lu'
 import { useState, Fragment } from 'react'
 import { toaster, Toaster } from '../components/ui/toaster'
-import { useQueryClient, useMutation } from '@tanstack/react-query'
+import { useMutation as useGraphQLMutation } from '@apollo/client/react'
 import { useNavigate } from 'react-router-dom'
 import slug from 'slug'
 
 import { TagsView } from './TagsView'
 import { User } from './User'
 
-import { deletePost } from '../api/posts'
+import {
+  DELETE_POST,
+  GET_POST_BY_AUTHOR,
+  GET_POSTS,
+  GET_POSTS_BY_TAG,
+} from '../api/graphql/posts'
 import { useAuth } from '../contexts/AuthContext'
 
-export function Post({ title, author, _id: postId, tags }) {
+export function Post({ title, author, id: postId, tags }) {
   const [showDelete, setShowDelete] = useState(false)
   const navigate = useNavigate()
   const [token] = useAuth()
 
-  const queryClient = useQueryClient()
-  const deletePostMutation = useMutation({
-    mutationFn: () => deletePost(token, postId),
-    onSuccess: (status) => {
-      console.log('data:', status)
+  const [deletePost] = useGraphQLMutation(DELETE_POST, {
+    variables: { postId },
+    context: { headers: { Authorization: `Bearer ${token}` } },
+    refetchQueries: [
+      {
+        query: GET_POSTS,
+        variables: {
+          options: { sortBy: 'createdAt', sortOrder: 'descending' },
+        },
+      },
+    ],
+    awaitRefetchQueries: true,
+    onCompleted: (data) => {
+      console.log('data;;;;', data)
 
-      if (status === 204) {
-        toaster.create({
-          title: 'Post deleted successfully!',
-          type: 'success',
-          duration: 5000,
-        })
+      if (data?.deletePost) {
+        if (data?.deletePost?.deletedCount == 1) {
+          toaster.create({
+            title: 'Post deleted successfully!',
+            type: 'success',
+            duration: 5000,
+          })
+
+          setShowDelete(false)
+          navigate('/')
+        } else {
+          toaster.create({
+            title: 'Failed to delete post!!',
+            type: 'error',
+            duration: 5000,
+          })
+        }
 
         setShowDelete(false)
+      } else {
+        toaster.create({
+          title: 'Failed to delete post!!!',
+          type: 'error',
+          duration: 5000,
+        })
+      }
+    },
+    onError: (error) => {
+      console.error(error)
 
-        queryClient.invalidateQueries(['posts'])
+      if (error.message.includes('Received status code 401') || !token) {
+        toaster.create({
+          title: 'Failed to delete post! You must be logged in.',
+          type: 'error',
+          duration: 5000,
+        })
       } else {
         toaster.create({
           title: 'Failed to delete post!',
@@ -53,15 +93,6 @@ export function Post({ title, author, _id: postId, tags }) {
       }
 
       setShowDelete(false)
-
-      queryClient.invalidateQueries(['posts'])
-    },
-    onError: () => {
-      toaster.create({
-        title: 'Failed to delete post!',
-        type: 'error',
-        duration: 5000,
-      })
     },
   })
 
@@ -77,7 +108,7 @@ export function Post({ title, author, _id: postId, tags }) {
           <Card.Title mt={'2'}>{title}</Card.Title>
           <Card.Description>
             Written by {''}
-            {author && <User id={author} />}
+            {author && <User {...author} />}
           </Card.Description>
         </Card.Body>
         <Card.Footer justifyContent={'flex-end'}>
@@ -131,10 +162,7 @@ export function Post({ title, author, _id: postId, tags }) {
                       <Button variant='outline'>Cancel</Button>
                     </Dialog.ActionTrigger>
 
-                    <Button
-                      colorPalette={'red'}
-                      onClick={() => deletePostMutation.mutate()}
-                    >
+                    <Button colorPalette={'red'} onClick={() => deletePost()}>
                       Delete
                     </Button>
                   </Dialog.Footer>
@@ -155,7 +183,7 @@ export function Post({ title, author, _id: postId, tags }) {
 
 Post.propTypes = {
   title: PropTypes.string.isRequired,
-  author: PropTypes.string,
-  _id: PropTypes.string,
+  author: PropTypes.shape(User.propTypes),
+  id: PropTypes.string,
   tags: PropTypes.arrayOf(PropTypes.string),
 }

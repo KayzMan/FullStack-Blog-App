@@ -13,7 +13,11 @@ import {
 } from '@chakra-ui/react'
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { useMutation, useQuery } from '@tanstack/react-query'
+import {
+  useQuery as useGraphQLQuery,
+  useMutation as useGraphQLMutation,
+} from '@apollo/client/react'
+import { useMutation } from '@tanstack/react-query'
 import { LuTrash2 } from 'react-icons/lu'
 import { FiEdit } from 'react-icons/fi'
 import { toaster, Toaster } from '../components/ui/toaster'
@@ -29,8 +33,13 @@ import { User } from '../components/User'
 import { useAuth } from '../contexts/AuthContext'
 
 // api...
-import { getSinglePost, deletePost } from '../api/posts'
-import { getUserInfo } from '../api/users'
+import {
+  DELETE_POST,
+  GET_POST_BY_ID,
+  GET_POST_BY_AUTHOR,
+  GET_POSTS,
+  GET_POSTS_BY_TAG,
+} from '../api/graphql/posts'
 import { postTrackEvent } from '../api/events'
 
 export function ViewPostPage() {
@@ -41,33 +50,63 @@ export function ViewPostPage() {
   const navigate = useNavigate()
   const [token] = useAuth()
 
-  const fetchPostQuery = useQuery({
-    queryKey: ['singlePost'],
-    queryFn: () => getSinglePost(postId),
+  const fetchPostQuery = useGraphQLQuery(GET_POST_BY_ID, {
+    variables: { id: postId },
   })
 
   // the post...
-  const post = fetchPostQuery.data
+  const post = fetchPostQuery.data?.postById
 
-  const userInfoQuery = useQuery({
-    queryKey: ['users', post?.author],
-    queryFn: () => getUserInfo(post?.author),
-    enabled: Boolean(post?.author),
-  })
-  const userInfo = userInfoQuery.data ?? {}
+  const [deletePost] = useGraphQLMutation(DELETE_POST, {
+    variables: { postId },
+    context: { headers: { Authorization: `Bearer ${token}` } },
+    refetchQueries: [
+      {
+        query: GET_POSTS,
+        variables: {
+          options: { sortBy: 'createdAt', sortOrder: 'descending' },
+        },
+      },
+    ],
+    awaitRefetchQueries: true,
+    onCompleted: (data) => {
+      console.log('data;;;;', data)
+      if (data?.deletePost) {
+        if (data?.deletePost?.deletedCount == 1) {
+          toaster.create({
+            title: 'Post deleted successfully!',
+            type: 'success',
+            duration: 5000,
+          })
 
-  const deletePostMutation = useMutation({
-    mutationFn: () => deletePost(token, postId),
-    onSuccess: (status) => {
-      if (status === 204) {
-        toaster.create({
-          title: 'Post deleted successfully!',
-          type: 'success',
-          duration: 5000,
-        })
+          setShowDelete(false)
+          navigate('/')
+        } else {
+          toaster.create({
+            title: 'Failed to delete post!!',
+            type: 'error',
+            duration: 5000,
+          })
+        }
 
         setShowDelete(false)
-        navigate('/')
+      } else {
+        toaster.create({
+          title: 'Failed to delete post!!!',
+          type: 'error',
+          duration: 5000,
+        })
+      }
+    },
+    onError: (error) => {
+      console.error(error)
+
+      if (error.message.includes('Received status code 401') || !token) {
+        toaster.create({
+          title: 'Failed to delete post! You must be logged in.',
+          type: 'error',
+          duration: 5000,
+        })
       } else {
         toaster.create({
           title: 'Failed to delete post!',
@@ -78,15 +117,13 @@ export function ViewPostPage() {
 
       setShowDelete(false)
     },
-    onError: () => {
-      toaster.create({
-        title: 'Failed to delete post!',
-        type: 'error',
-        duration: 5000,
-      })
-    },
   })
 
+  /*
+  *****
+   TODO: vEry important!
+  ****
+  */
   const trackEventMutation = useMutation({
     mutationFn: (action) => postTrackEvent({ postId, action, session }),
     onSuccess: (data) => setSession(data.session),
@@ -128,7 +165,7 @@ export function ViewPostPage() {
         <meta property='og:title' content={post.title} />
         <meta property='og:article:published_time' content={post.createdAt} />
         <meta property='og:article:modified_time' content={post.updatedAt} />
-        <meta property='og:article:author' content={userInfo.username} />
+        <meta property='og:article:author' content={post?.author?.username} />
         {(post.tags ?? []).map((tag) => (
           <meta key={tag} property='og:article:tag' content={tag} />
         ))}
@@ -157,7 +194,7 @@ export function ViewPostPage() {
                   <Card.Title mt={'2'}>{post.title}</Card.Title>
                   <Card.Description>
                     Written by {''}
-                    {post.author && <User id={post.author} />}
+                    {post.author?.username && <User {...post.author} />}
                   </Card.Description>
                   <TagsView tags={post.tags} />
                   <Separator />
@@ -217,7 +254,7 @@ export function ViewPostPage() {
 
                             <Button
                               colorPalette={'red'}
-                              onClick={() => deletePostMutation.mutate()}
+                              onClick={() => deletePost()}
                             >
                               Delete
                             </Button>

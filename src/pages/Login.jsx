@@ -9,11 +9,11 @@ import {
   Text,
 } from '@chakra-ui/react'
 import { useState } from 'react'
-import { useMutation } from '@tanstack/react-query'
+import { useMutation as useGraphQLMutation } from '@apollo/client/react'
 import { useNavigate, Link } from 'react-router-dom'
 
 import { routesPaths } from '../constants/routesPaths'
-import { login } from '../api/users'
+import { LOGIN_USER } from '../api/graphql/users'
 import { useAuth } from '../contexts/AuthContext'
 
 import { toaster, Toaster } from '../components/ui/toaster'
@@ -25,16 +25,13 @@ export function Login() {
   const navigate = useNavigate()
   const [, setToken] = useAuth()
 
-  const loginMutation = useMutation({
-    mutationFn: () => login({ username, password }),
-    onSuccess: (data) => {
-      setToken(data.token)
+  const [loginUser, { loading }] = useGraphQLMutation(LOGIN_USER, {
+    variables: { username, password },
+    onCompleted: (data) => {
+      setToken(data.loginUser)
       navigate(routesPaths.home)
     },
     onError: (error) => {
-      console.error(error)
-      console.error(error.message)
-      console.error(error.cause)
       toaster.create({
         description: error.message,
         type: 'error',
@@ -45,7 +42,7 @@ export function Login() {
 
   const handleSubmit = (e) => {
     e.preventDefault()
-    loginMutation.mutate()
+    loginUser()
   }
 
   return (
@@ -100,12 +97,13 @@ export function Login() {
           {/* Submit Button */}
           <Button
             type='submit'
-            loading={loginMutation.isPending}
+            loading={loading}
+            disabled={!username || !password || loading}
             color={'white'}
             bg={'olive'}
             textTransform={'uppercase'}
           >
-            {loginMutation.isPending ? 'Logging in...' : 'Log In'}
+            {loading ? 'Logging in...' : 'Log In'}
           </Button>
         </Stack>
 
